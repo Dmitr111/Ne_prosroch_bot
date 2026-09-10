@@ -71,11 +71,14 @@ select {
   background: var(--section-bg);
 }
 
+/* Обе боковые зоны одной ширины, иначе заголовок уезжает от центра:
+   слева одна стрелка, справа две иконки */
 .screen__side {
   display: flex;
   align-items: center;
   gap: 4px;
-  min-width: 64px;
+  width: 80px;
+  flex: none;
 }
 
 .screen__side--end {
@@ -166,10 +169,19 @@ select {
   background: var(--section-bg);
 }
 
+/* Карточка продукта — кнопка, открывающая редактирование */
 .product {
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.product:active {
+  opacity: 0.7;
 }
 
 .dot {
@@ -347,13 +359,64 @@ select {
   font-size: 13px;
 }
 
+.field__hint--error {
+  color: var(--urgency-red);
+}
+
 .control {
   width: 100%;
   padding: 13px 14px;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius);
   background: var(--section-bg);
   color: var(--text);
+}
+
+.control::placeholder,
+.control--placeholder {
+  color: var(--hint);
+}
+
+.control--invalid {
+  border-color: var(--urgency-red);
+}
+
+/* Поле даты: видимый текст свой, в русском формате, а нативный input
+   лежит поверх прозрачным слоем и открывает календарь по касанию */
+.date-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 50px;
+}
+
+.date-control__placeholder {
+  color: var(--hint);
+}
+
+.date-control__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.date-control__clear {
+  position: relative;
+  z-index: 1;
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--hint);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .control--select {
@@ -381,6 +444,8 @@ select {
   flex: 1;
 }
 
+/* Значение справа во всех строках настроек. Для select выравнивание
+   выбранного пункта задаёт text-align-last, одного text-align мало */
 .row__control {
   padding: 4px 8px;
   border: none;
@@ -389,6 +454,37 @@ select {
   color: var(--link);
   font-weight: 700;
   text-align: right;
+  text-align-last: right;
+}
+
+/* ---------- Действия на экране редактирования ---------- */
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.action {
+  width: 100%;
+  padding: 13px 14px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--section-bg);
+  color: var(--link);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.action--danger {
+  color: var(--urgency-red);
+}
+
+.action:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* ---------- Служебное ---------- */
@@ -406,8 +502,11 @@ select {
 }
 
 /* Кнопка внизу экрана. Внутри Telegram вместо неё показывается штатная
-   MainButton клиента, этот вариант виден только в браузере */
+   MainButton клиента, этот вариант виден только в браузере. Прилипает
+   к низу, иначе на длинном перечне она оказывалась за концом списка */
 .main-button {
+  position: sticky;
+  bottom: 0;
   width: 100%;
   padding: 18px;
   border: none;

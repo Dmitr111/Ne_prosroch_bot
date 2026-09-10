@@ -22,6 +22,7 @@ interface ProductsPageProps {
   loading: boolean
   error: string | null
   onAdd: () => void
+  onEdit: (product: Product) => void
   onOpenRecommendations: () => void
   onOpenSettings: () => void
   /** На корневом экране возвращаться некуда, стрелка не показывается */
@@ -35,6 +36,7 @@ export function ProductsPage({
   loading,
   error,
   onAdd,
+  onEdit,
   onOpenRecommendations,
   onOpenSettings,
   onBack,
@@ -70,7 +72,10 @@ export function ProductsPage({
       if (group) group.push(product)
       else byPlace.set(place, [product])
     }
-    return [...byPlace.entries()]
+    // Места хранения — в порядке самого срочного продукта, позиции без места — в конце
+    return [...byPlace.entries()].sort(
+      ([a], [b]) => Number(a === WITHOUT_PLACE) - Number(b === WITHOUT_PLACE),
+    )
   }, [products, places, query])
 
   return (
@@ -153,18 +158,21 @@ export function ProductsPage({
           <h2 className="group__title">{place.toUpperCase()}</h2>
           <ul className="card-list">
             {items.map((product) => (
-              <li key={product.id} className="card product">
-                <span className={`dot dot--${product.urgency}`} aria-hidden="true" />
-                <div className="product__text">
-                  <span className="product__name">{product.name}</span>
-                  <span className="product__meta">
-                    {formatQuantity(product.quantity)} {product.unit}
-                    {categoryOf(product) && ` · ${categoryOf(product)}`}
+              <li key={product.id}>
+                {/* Карточка — кнопка: касание открывает редактирование */}
+                <button className="card product" onClick={() => onEdit(product)}>
+                  <span className={`dot dot--${product.urgency}`} aria-hidden="true" />
+                  <span className="product__text">
+                    <span className="product__name">{product.name}</span>
+                    <span className="product__meta">
+                      {formatQuantity(product.quantity)} {product.unit}
+                      {categoryOf(product) && ` · ${categoryOf(product)}`}
+                    </span>
                   </span>
-                </div>
-                <span className={`product__days product__days--${product.urgency}`}>
-                  {formatDaysLeft(product.days_left)}
-                </span>
+                  <span className={`product__days product__days--${product.urgency}`}>
+                    {formatDaysLeft(product.days_left)}
+                  </span>
+                </button>
               </li>
             ))}
           </ul>

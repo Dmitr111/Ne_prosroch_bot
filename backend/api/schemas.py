@@ -9,7 +9,7 @@ from datetime import date, time
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 # Статусы, которые пользователь проставляет отметкой. Четвёртый статус
 # справочника, removed, сюда не входит: удаление из перечня идёт через
@@ -144,6 +144,19 @@ class SettingsUpdate(BaseModel):
     horizon_days: int | None = Field(default=None, ge=1, le=60)
     # Ограничение k на размер набора рецептов
     recommend_limit: int | None = Field(default=None, ge=1, le=20)
+
+    @field_validator("notify_time")
+    @classmethod
+    def truncate_to_hour(cls, value: time | None) -> time | None:
+        """Время напоминания хранится с точностью до часа.
+
+        Рассылка запускается ежечасно и отбирает получателей по часу:
+        минуты планировщик не учитывает. Сохранять 23:25 значило бы
+        обещать пользователю то, чего система не делает.
+        """
+        if value is None:
+            return None
+        return value.replace(minute=0, second=0, microsecond=0)
 
     @model_validator(mode="after")
     def check_required_not_cleared(self) -> "SettingsUpdate":

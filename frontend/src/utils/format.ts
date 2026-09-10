@@ -46,9 +46,33 @@ export function formatDays(days: number): string {
   return `${days} ${plural(days, 'день', 'дня', 'дней')}`
 }
 
-/** Время из ответа API (HH:MM:SS) в значение поля ввода (HH:MM). */
-export function timeToInput(value: string): string {
-  return value.slice(0, 5)
+/*
+ * Даты и время форматируются здесь вручную, а не средствами браузера.
+ * Нативные <input type="date|time"> в WebView Telegram показывают значение
+ * в локали устройства и атрибут lang="ru" не учитывают: на телефоне
+ * с английской системой получалось 09/10/2026 и 11:25 PM. Разбор строки
+ * без new Date() заодно избавляет от сдвига на сутки из-за часового пояса.
+ */
+
+/** Дата из API (YYYY-MM-DD) в русском формате: 10.09.2026. */
+export function formatDate(value: string): string {
+  const [year, month, day] = value.split('-')
+  return year && month && day ? `${day}.${month}.${year}` : value
+}
+
+/** Час напоминания из времени API (HH:MM:SS): 23. */
+export function hourOf(value: string): number {
+  return Number(value.slice(0, 2)) || 0
+}
+
+/** Час в 24-часовом формате: 9 → «09:00». */
+export function formatHour(hour: number): string {
+  return `${String(hour).padStart(2, '0')}:00`
+}
+
+/** Час в формат времени API: 9 → «09:00:00». */
+export function hourToApi(hour: number): string {
+  return `${formatHour(hour)}:00`
 }
 
 /** Сегодняшняя дата в формате поля ввода. */

@@ -16,6 +16,7 @@ from typing import Any
 import pytest
 from sqlalchemy.dialects import postgresql
 
+from backend.repositories.catalogs import DEFAULT_STORAGE_PLACES, CatalogRepository
 from backend.repositories.products import ProductRepository
 
 TODAY = date(2026, 3, 10)
@@ -112,6 +113,29 @@ async def test_get_all_filters_by_given_status() -> None:
     await ProductRepository(session).get_all(1, status_code="removed")
 
     assert "products.status_code = 'removed'" in rendered(session.statements[0])
+
+
+@pytest.mark.asyncio
+async def test_default_storage_places_created_on_first_read() -> None:
+    """Без мест хранения пользователь получает стандартный набор.
+
+    Создать место через API нельзя, поэтому без этого список выбора в форме
+    был пуст. Вставка идёт с ON CONFLICT DO NOTHING: два одновременных
+    первых запроса не должны упасть на UNIQUE(telegram_id, name).
+    """
+    session = CapturingSession()
+
+    await CatalogRepository(session).get_storage_places(1)
+
+    select_sql, insert_sql, reselect_sql = (
+        rendered(statement) for statement in session.statements
+    )
+    assert select_sql.startswith("SELECT")
+    assert insert_sql.startswith("INSERT INTO storage_places")
+    assert "ON CONFLICT (telegram_id, name) DO NOTHING" in insert_sql
+    for name in DEFAULT_STORAGE_PLACES:
+        assert f"'{name}'" in insert_sql
+    assert reselect_sql == select_sql
 
 
 @pytest.mark.asyncio

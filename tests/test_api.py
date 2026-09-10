@@ -702,6 +702,17 @@ async def test_update_settings_validates_bounds(
 
 
 @pytest.mark.asyncio
+async def test_notify_time_is_truncated_to_hour(
+    client: AsyncClient, env: Environment
+) -> None:
+    """Минуты отбрасываются: рассылка отбирает получателей только по часу."""
+    response = await client.patch("/settings", json={"notify_time": "23:25:00"})
+
+    assert response.status_code == 200
+    assert response.json()["notify_time"] == "23:00:00"
+
+
+@pytest.mark.asyncio
 async def test_settings_cannot_be_cleared(
     client: AsyncClient, env: Environment
 ) -> None:
