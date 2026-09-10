@@ -25,7 +25,10 @@ export interface ThemeParams {
 export interface MainButton {
   text: string
   isVisible: boolean
+  isActive: boolean
+  isProgressVisible: boolean
   setText(text: string): void
+  setParams(params: { text?: string; is_active?: boolean; is_visible?: boolean }): void
   show(): void
   hide(): void
   enable(): void
@@ -46,6 +49,7 @@ export interface TelegramWebApp {
   onEvent(event: string, handler: () => void): void
   offEvent(event: string, handler: () => void): void
   showAlert(message: string): void
+  showConfirm(message: string, callback: (confirmed: boolean) => void): void
 }
 
 declare global {
@@ -101,34 +105,79 @@ export function initTelegram(): void {
   webApp.onEvent('themeChanged', applyTheme)
 }
 
-/**
- * Показывает основную кнопку Telegram и возвращает функцию отписки.
+/*
+ * Основная кнопка.
  *
- * Вне Telegram возвращает null — вызывающий код рисует свою кнопку
- * в потоке страницы, как на макетах.
+ * Кнопка у клиента одна на всё приложение, а экраны сменяют друг друга.
+ * Прежний вариант при каждой перерисовке и каждой смене экрана посылал
+ * клиенту пачку «скрыть → сменить текст → показать», причём от двух
+ * экранов вперемешку. Клиент Telegram анимирует скрытие, и текст нового
+ * экрана мог не примениться — отсюда «Обновить подборку» на вкладке
+ * «Продукты».
+ *
+ * Теперь состояние кнопки задаётся одним вызовом setParams, обработчик
+ * нажатия регистрируется один раз и перенаправляет на текущий, а скрытие
+ * при уходе с экрана отложено: если следующий экран сразу занял кнопку,
+ * скрывать её не нужно, и клиент получает одно обновление вместо трёх.
  */
-export function showMainButton(
-  text: string,
+
+export interface MainButtonState {
+  text: string
+  disabled: boolean
+  progress: boolean
+}
+
+let owner: symbol | null = null
+let handler: (() => void) | null = null
+let claims = 0
+let listening = false
+
+/**
+ * Занимает основную кнопку Telegram под экран и задаёт её состояние.
+ *
+ * @returns false вне Telegram — тогда экран рисует свою кнопку
+ */
+export function setMainButton(
+  id: symbol,
+  state: MainButtonState,
   onClick: () => void,
-  options: { disabled?: boolean; progress?: boolean } = {},
-): (() => void) | null {
+): boolean {
   const webApp = getWebApp()
-  if (!webApp) return null
+  if (!webApp) return false
 
   const button = webApp.MainButton
-  button.setText(text)
-  if (options.disabled) button.disable()
-  else button.enable()
-  if (options.progress) button.showProgress(false)
-  else button.hideProgress()
-  button.onClick(onClick)
-  button.show()
-
-  return () => {
-    button.offClick(onClick)
-    button.hide()
-    button.hideProgress()
+  if (!listening) {
+    button.onClick(() => handler?.())
+    listening = true
   }
+  owner = id
+  handler = onClick
+  claims += 1
+
+  // Прогресс переключается до setParams и только при изменении: hideProgress
+  // в SDK включает выключенную кнопку, и после него disable() терялся —
+  // «Сохранить» на незаполненной форме выглядела и работала как активная
+  if (button.isProgressVisible !== state.progress) {
+    if (state.progress) button.showProgress(false)
+    else button.hideProgress()
+  }
+  button.setParams({
+    text: state.text,
+    is_active: !state.disabled && !state.progress,
+    is_visible: true,
+  })
+  return true
+}
+
+/** Освобождает кнопку; скрывает её, только если никто не занял её следом. */
+export function releaseMainButton(id: symbol): void {
+  const claimsAtRelease = claims
+  setTimeout(() => {
+    if (owner !== id || claims !== claimsAtRelease) return
+    owner = null
+    handler = null
+    getWebApp()?.MainButton.hide()
+  }, 0)
 }
 
 /** Сообщение об ошибке средствами клиента, с запасным вариантом. */
@@ -136,4 +185,11 @@ export function showAlert(message: string): void {
   const webApp = getWebApp()
   if (webApp) webApp.showAlert(message)
   else window.alert(message)
+}
+
+/** Подтверждение действия средствами клиента, с запасным вариантом. */
+export function confirmAction(message: string): Promise<boolean> {
+  const webApp = getWebApp()
+  if (!webApp) return Promise.resolve(window.confirm(message))
+  return new Promise((resolve) => webApp.showConfirm(message, resolve))
 }
