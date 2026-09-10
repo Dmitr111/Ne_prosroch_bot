@@ -1,0 +1,424 @@
+/*
+ * Оформление mini app.
+ *
+ * Цвета фона, текста и кнопок берутся из темы Telegram через переменные
+ * --tg-theme-*; значения после запятой — запасные, они используются только
+ * при открытии вне Telegram. Ничего не зашито жёстко, поэтому приложение
+ * одинаково выглядит в светлой и тёмной теме.
+ *
+ * Исключение — цвета срочности. В палитре Telegram есть только
+ * destructive_text_color (красный), жёлтого и зелёного там нет, поэтому
+ * они заданы здесь и подстраиваются под тёмную тему отдельно.
+ */
+
+:root {
+  --bg: var(--tg-theme-secondary-bg-color, #efeff4);
+  --section-bg: var(--tg-theme-section-bg-color, var(--tg-theme-bg-color, #ffffff));
+  --text: var(--tg-theme-text-color, #000000);
+  --hint: var(--tg-theme-hint-color, #8e8e93);
+  --section-header: var(--tg-theme-section-header-text-color, #8e8e93);
+  --accent: var(--tg-theme-button-color, #2c8bd0);
+  --accent-text: var(--tg-theme-button-text-color, #ffffff);
+  --link: var(--tg-theme-link-color, #2c8bd0);
+
+  --urgency-red: var(--tg-theme-destructive-text-color, #d1401f);
+  --urgency-yellow: #d98005;
+  --urgency-green: #1a9d3d;
+
+  --radius: 12px;
+  --gap: 12px;
+}
+
+/* В тёмной теме светлые оттенки срочности теряют контраст */
+:root[data-color-scheme='dark'] {
+  --urgency-yellow: #f0a63a;
+  --urgency-green: #4fc76a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---------- Каркас экрана ---------- */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.screen__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 8px;
+  background: var(--section-bg);
+}
+
+.screen__side {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 64px;
+}
+
+.screen__side--end {
+  justify-content: flex-end;
+}
+
+.screen__title {
+  flex: 1;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--link);
+  cursor: pointer;
+}
+
+.screen__body {
+  flex: 1;
+  padding: 12px 16px 24px;
+  overflow-y: auto;
+}
+
+/* ---------- Переключатель разделов ---------- */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 16px;
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.tabs__item {
+  flex: 1;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--hint);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tabs__item--active {
+  background: var(--section-bg);
+  color: var(--text);
+}
+
+/* ---------- Списки и карточки ---------- */
+
+.group__title {
+  margin: 20px 0 8px;
+  color: var(--section-header);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.group:first-of-type .group__title {
+  margin-top: 4px;
+}
+
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--section-bg);
+}
+
+.product {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.dot--red {
+  background: var(--urgency-red);
+}
+
+.dot--yellow {
+  background: var(--urgency-yellow);
+}
+
+.dot--green {
+  background: var(--urgency-green);
+}
+
+.product__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.product__name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.product__meta {
+  color: var(--hint);
+  font-size: 14px;
+}
+
+.product__days {
+  flex: none;
+  font-weight: 700;
+  font-size: 15px;
+  text-align: right;
+}
+
+.product__days--red {
+  color: var(--urgency-red);
+}
+
+.product__days--yellow {
+  color: var(--urgency-yellow);
+}
+
+.product__days--green {
+  color: var(--urgency-green);
+}
+
+/* ---------- Рекомендации ---------- */
+
+.expiring {
+  padding: 14px 16px;
+  margin-bottom: var(--gap);
+  border: 1px solid color-mix(in srgb, var(--urgency-red) 35%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--urgency-red) 8%, var(--section-bg));
+}
+
+.expiring__title {
+  margin: 0 0 4px;
+  color: var(--urgency-red);
+  font-weight: 700;
+}
+
+.expiring__list {
+  margin: 0;
+}
+
+.recipe__title {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+
+.recipe__ingredients {
+  margin: 0;
+  color: var(--hint);
+  font-size: 15px;
+}
+
+.recipe__ingredient--expiring {
+  color: var(--urgency-yellow);
+  font-weight: 700;
+}
+
+.recipe__time {
+  margin: 6px 0 0;
+  color: var(--hint);
+  font-size: 14px;
+}
+
+.recipe__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.badge {
+  padding: 7px 14px;
+  border: 1px solid color-mix(in srgb, var(--urgency-yellow) 45%, transparent);
+  border-radius: 999px;
+  color: var(--urgency-yellow);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.button {
+  flex: 1;
+  padding: 11px 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.footnote {
+  margin: 16px 0 0;
+  color: var(--hint);
+  font-size: 14px;
+  text-align: center;
+}
+
+.footnote--left {
+  text-align: left;
+}
+
+/* ---------- Формы ---------- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form__row {
+  display: flex;
+  gap: 12px;
+}
+
+.form__row .field {
+  flex: 1;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field__label {
+  color: var(--hint);
+  font-size: 14px;
+}
+
+.field__hint {
+  color: var(--hint);
+  font-size: 13px;
+}
+
+.control {
+  width: 100%;
+  padding: 13px 14px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--section-bg);
+  color: var(--text);
+}
+
+.control--select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--hint) 50%),
+    linear-gradient(135deg, var(--hint) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 36px;
+}
+
+.search {
+  margin-bottom: 12px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.row__label {
+  flex: 1;
+}
+
+.row__control {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--link);
+  font-weight: 700;
+  text-align: right;
+}
+
+/* ---------- Служебное ---------- */
+
+.notice {
+  padding: 14px 16px;
+  margin: 0 0 var(--gap);
+  border-radius: var(--radius);
+  background: var(--section-bg);
+  color: var(--hint);
+}
+
+.notice--error {
+  color: var(--urgency-red);
+}
+
+/* Кнопка внизу экрана. Внутри Telegram вместо неё показывается штатная
+   MainButton клиента, этот вариант виден только в браузере */
+.main-button {
+  width: 100%;
+  padding: 18px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.main-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
