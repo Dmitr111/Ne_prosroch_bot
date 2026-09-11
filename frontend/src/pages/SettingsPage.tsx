@@ -14,7 +14,6 @@
 
 import { useState } from 'react'
 import type { Settings } from '../api'
-import { MainButton } from '../components/MainButton'
 import { Screen } from '../components/Screen'
 import { formatDays, formatHour, hourOf, hourToApi } from '../utils/format'
 
@@ -53,20 +52,17 @@ export function SettingsPage({ settings, saving, error, onSave, onBack }: Settin
     <Screen
       title="Настройки"
       onBack={onBack}
-      footer={
-        <MainButton
-          text="Сохранить"
-          onClick={() =>
-            onSave({
-              notify_time: hourToApi(notifyHour),
-              threshold_days: thresholdDays,
-              horizon_days: horizonDays,
-              recommend_limit: recommendLimit,
-            })
-          }
-          progress={saving}
-        />
-      }
+      button={{
+        text: 'Сохранить',
+        onClick: () =>
+          onSave({
+            notify_time: hourToApi(notifyHour),
+            threshold_days: thresholdDays,
+            horizon_days: horizonDays,
+            recommend_limit: recommendLimit,
+          }),
+        progress: saving,
+      }}
     >
       {error && <p className="notice notice--error">{error}</p>}
 

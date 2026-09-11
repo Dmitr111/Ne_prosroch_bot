@@ -8,7 +8,6 @@
 
 import { useMemo, useState } from 'react'
 import type { Ingredient, Product, StoragePlace } from '../api'
-import { MainButton } from '../components/MainButton'
 import { Screen } from '../components/Screen'
 import { Tabs } from '../components/Tabs'
 import { formatDaysLeft, formatQuantity } from '../utils/format'
@@ -129,7 +128,7 @@ export function ProductsPage({
           </button>
         </>
       }
-      footer={<MainButton text="Добавить продукт" onClick={onAdd} />}
+      button={{ text: 'Добавить продукт', onClick: onAdd }}
     >
       <Tabs active="products" onChange={(tab) => tab === 'recommendations' && onOpenRecommendations()} />
 
