@@ -2,9 +2,15 @@
  * Обёртка над SDK Telegram Web Apps.
  *
  * Всё общение с `window.Telegram.WebApp` идёт через этот модуль: initData
- * для авторизации запросов, тема оформления и основная кнопка. Приложение
- * должно открываться и в обычном браузере — при отладке фронтенда SDK
- * недоступен, поэтому каждая функция здесь переживает его отсутствие.
+ * для авторизации запросов, тема оформления и системные диалоги.
+ * Приложение должно открываться и в обычном браузере — при отладке
+ * фронтенда клиента Telegram нет, поэтому каждая функция здесь переживает
+ * его отсутствие.
+ *
+ * Основной кнопкой клиента (MainButton) приложение не пользуется: это один
+ * глобальный объект на всё приложение, который каждый экран перенастраивал
+ * бы императивно, и её вид — отступы, скругление — задаёт клиент, а не мы.
+ * Кнопка действия рисуется внутри экрана, см. components/Screen.tsx.
  */
 
 export interface ThemeParams {
@@ -22,28 +28,10 @@ export interface ThemeParams {
   accent_text_color?: string
 }
 
-export interface MainButton {
-  text: string
-  isVisible: boolean
-  isActive: boolean
-  isProgressVisible: boolean
-  setText(text: string): void
-  setParams(params: { text?: string; is_active?: boolean; is_visible?: boolean }): void
-  show(): void
-  hide(): void
-  enable(): void
-  disable(): void
-  showProgress(leaveActive?: boolean): void
-  hideProgress(): void
-  onClick(handler: () => void): void
-  offClick(handler: () => void): void
-}
-
 export interface TelegramWebApp {
   initData: string
   colorScheme: 'light' | 'dark'
   themeParams: ThemeParams
-  MainButton: MainButton
   ready(): void
   expand(): void
   onEvent(event: string, handler: () => void): void
@@ -58,9 +46,16 @@ declare global {
   }
 }
 
-/** SDK или null, если приложение открыто вне Telegram. */
+/**
+ * SDK или null, если приложение открыто вне Telegram.
+ *
+ * Самого `window.Telegram.WebApp` для этого мало: скрипт SDK создаёт его
+ * в любом браузере. Признак запуска из клиента — непустая initData,
+ * её передаёт только Telegram.
+ */
 export function getWebApp(): TelegramWebApp | null {
-  return window.Telegram?.WebApp ?? null
+  const webApp = window.Telegram?.WebApp
+  return webApp && webApp.initData ? webApp : null
 }
 
 /**
@@ -94,7 +89,13 @@ export function applyTheme(): void {
   root.dataset.colorScheme = webApp.colorScheme
 }
 
-/** Сообщает Telegram о готовности и разворачивает окно на всю высоту. */
+/**
+ * Сообщает Telegram о готовности и разворачивает окно на всю высоту.
+ *
+ * Высоту видимой области SDK сам выставляет в `--tg-viewport-height`
+ * и обновляет при открытии клавиатуры — по ней экран держит кнопку
+ * действия над клавиатурой.
+ */
 export function initTelegram(): void {
   const webApp = getWebApp()
   if (!webApp) return
@@ -103,81 +104,6 @@ export function initTelegram(): void {
   webApp.expand()
   applyTheme()
   webApp.onEvent('themeChanged', applyTheme)
-}
-
-/*
- * Основная кнопка.
- *
- * Кнопка у клиента одна на всё приложение, а экраны сменяют друг друга.
- * Прежний вариант при каждой перерисовке и каждой смене экрана посылал
- * клиенту пачку «скрыть → сменить текст → показать», причём от двух
- * экранов вперемешку. Клиент Telegram анимирует скрытие, и текст нового
- * экрана мог не примениться — отсюда «Обновить подборку» на вкладке
- * «Продукты».
- *
- * Теперь состояние кнопки задаётся одним вызовом setParams, обработчик
- * нажатия регистрируется один раз и перенаправляет на текущий, а скрытие
- * при уходе с экрана отложено: если следующий экран сразу занял кнопку,
- * скрывать её не нужно, и клиент получает одно обновление вместо трёх.
- */
-
-export interface MainButtonState {
-  text: string
-  disabled: boolean
-  progress: boolean
-}
-
-let owner: symbol | null = null
-let handler: (() => void) | null = null
-let claims = 0
-let listening = false
-
-/**
- * Занимает основную кнопку Telegram под экран и задаёт её состояние.
- *
- * @returns false вне Telegram — тогда экран рисует свою кнопку
- */
-export function setMainButton(
-  id: symbol,
-  state: MainButtonState,
-  onClick: () => void,
-): boolean {
-  const webApp = getWebApp()
-  if (!webApp) return false
-
-  const button = webApp.MainButton
-  if (!listening) {
-    button.onClick(() => handler?.())
-    listening = true
-  }
-  owner = id
-  handler = onClick
-  claims += 1
-
-  // Прогресс переключается до setParams и только при изменении: hideProgress
-  // в SDK включает выключенную кнопку, и после него disable() терялся —
-  // «Сохранить» на незаполненной форме выглядела и работала как активная
-  if (button.isProgressVisible !== state.progress) {
-    if (state.progress) button.showProgress(false)
-    else button.hideProgress()
-  }
-  button.setParams({
-    text: state.text,
-    is_active: !state.disabled && !state.progress,
-    is_visible: true,
-  })
-  return true
-}
-
-/** Освобождает кнопку; скрывает её, только если никто не занял её следом. */
-export function releaseMainButton(id: symbol): void {
-  const claimsAtRelease = claims
-  setTimeout(() => {
-    if (owner !== id || claims !== claimsAtRelease) return
-    owner = null
-    handler = null
-    getWebApp()?.MainButton.hide()
-  }, 0)
 }
 
 /** Сообщение об ошибке средствами клиента, с запасным вариантом. */

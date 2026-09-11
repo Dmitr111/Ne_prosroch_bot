@@ -91,6 +91,7 @@ copy .env.example .env        # VITE_API_URL, по умолчанию /api че�
 npm install
 npm run dev                   # http://localhost:5173
 npm run build                 # проверка типов и сборка в dist/
+npm test                      # тесты интерфейса (vitest + jsdom)
 ```
 
 В разработке vite проксирует `/api` на `http://localhost:8000`, поэтому

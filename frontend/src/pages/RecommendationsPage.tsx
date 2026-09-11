@@ -11,7 +11,6 @@
 
 import { useMemo } from 'react'
 import type { Product, Recipe } from '../api'
-import { MainButton } from '../components/MainButton'
 import { Screen } from '../components/Screen'
 import { Tabs } from '../components/Tabs'
 import { formatExpiryHint } from '../utils/format'
@@ -50,7 +49,7 @@ export function RecommendationsPage({
     <Screen
       title="Рекомендации"
       onBack={onBack}
-      footer={<MainButton text="Обновить подборку" onClick={onRefresh} progress={loading} />}
+      button={{ text: 'Обновить подборку', onClick: onRefresh, progress: loading }}
     >
       <Tabs
         active="recommendations"

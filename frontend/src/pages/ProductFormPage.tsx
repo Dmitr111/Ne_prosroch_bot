@@ -15,7 +15,6 @@ import { useMemo, useState } from 'react'
 import type { Ingredient, Product, ProductCreate, StatusCode, StoragePlace } from '../api'
 import { DateField } from '../components/DateField'
 import { Field } from '../components/Field'
-import { MainButton } from '../components/MainButton'
 import { Screen } from '../components/Screen'
 import { confirmAction } from '../telegram'
 import { formatQuantity, todayInput } from '../utils/format'
@@ -96,9 +95,9 @@ export function ProductFormPage({
   }
   const valid = Object.values(errors).every((message) => message === null)
 
-  // Кнопка не выключается, пока форма не заполнена: выключенная MainButton
-  // в клиенте Telegram выглядит почти как активная, и нажатие без реакции
-  // оставляло пользователя в недоумении. Вместо этого показываем, чего не хватает
+  // Пока форма не заполнена, кнопка выглядит неактивной, но нажатие не глохнет:
+  // оно показывает, каких полей не хватает. Молчащая кнопка оставляла
+  // пользователя в недоумении
   function submit() {
     setAttempted(true)
     if (!valid) return
@@ -132,7 +131,7 @@ export function ProductFormPage({
     <Screen
       title={product ? 'Редактирование' : 'Новый продукт'}
       onBack={onBack}
-      footer={<MainButton text="Сохранить" onClick={submit} progress={saving} />}
+      button={{ text: 'Сохранить', onClick: submit, inactive: !valid, progress: saving }}
     >
       {error && <p className="notice notice--error">{error}</p>}
 
