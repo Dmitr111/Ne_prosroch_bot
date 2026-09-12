@@ -357,7 +357,8 @@ select {
 .recipe__actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 16px;
   margin-top: 14px;
 }
 
@@ -385,6 +386,39 @@ select {
 .button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.recipe__actions .badge {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.recipe__write-off {
+  flex: 0 0 auto;
+  width: 160px;
+  max-width: 60%;
+  min-height: 56px;
+  padding: 6px 8px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 399px) {
+  .recipe__actions .badge {
+    padding: 7px 6px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 359px) {
+  .recipe__write-off {
+    width: 148px;
+    padding-inline: 4px;
+  }
 }
 
 .footnote {
@@ -572,4 +606,3 @@ select {
 .notice--error {
   color: var(--urgency-red);
 }
-

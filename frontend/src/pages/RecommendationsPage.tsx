@@ -105,7 +105,7 @@ export function RecommendationsPage({
                   истекающих: {recipe.covered_product_ids.length}
                 </span>
                 <button
-                  className="button"
+                  className="button recipe__write-off"
                   disabled={
                     recipe.covered_product_ids.length === 0 || writingOff === recipe.title
                   }
