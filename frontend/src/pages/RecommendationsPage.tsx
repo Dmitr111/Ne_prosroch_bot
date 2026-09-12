@@ -111,7 +111,7 @@ export function RecommendationsPage({
                   }
                   onClick={() => onWriteOff(recipe)}
                 >
-                  {writingOff === recipe.title ? 'Списываем…' : 'Списать продукты'}
+                  {writingOff === recipe.title ? 'Отмечаем…' : 'Отметить использованными'}
                 </button>
               </div>
             </li>
