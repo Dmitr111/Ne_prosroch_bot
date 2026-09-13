@@ -9,7 +9,7 @@
  * что к MainButton клиента никто не обращается.
  */
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './App'
 import { api } from './api'
@@ -227,5 +227,49 @@ describe('кнопка действия экрана', () => {
     expect(api.createProduct).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'Кефир', ingredient_name: 'молоко' }),
     )
+  })
+})
+
+describe('ошибка отметки продуктов', () => {
+  it.each([0, 1])('сохраняется после обновления, успешных отметок: %s', async (completed) => {
+    const secondProduct = { ...PRODUCTS[0], id: 2, name: 'Вторая пачка молока' }
+    const initialProducts = [...PRODUCTS, secondProduct]
+    const remainingProducts = initialProducts.slice(completed)
+    const initialRecipe = { ...RECIPES[0], covered_product_ids: [1, 2] }
+    const refreshedRecipe = {
+      ...initialRecipe,
+      covered_product_ids: remainingProducts.map((product) => product.id),
+    }
+    vi.mocked(api.listProducts)
+      .mockResolvedValueOnce(initialProducts)
+      .mockResolvedValueOnce(remainingProducts)
+    vi.mocked(api.getRecommendations)
+      .mockResolvedValueOnce([initialRecipe])
+      .mockResolvedValueOnce([refreshedRecipe])
+    if (completed === 1) {
+      vi.mocked(api.setProductStatus).mockResolvedValueOnce({ ...PRODUCTS[0], status_code: 'used' })
+    }
+    vi.mocked(api.setProductStatus).mockRejectedValueOnce(new Error('Сбой запроса'))
+
+    render(<App />)
+    await expectScreen('Мои продукты', 'Добавить продукт')
+    fireEvent.click(screen.getByRole('tab', { name: 'Рекомендации' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Отметить использованными' }))
+
+    expect(await screen.findByText(
+      `Не удалось отметить все продукты. Подтверждено: ${completed} из 2. Не удалось выполнить запрос`,
+    )).toBeTruthy()
+    await waitFor(() => {
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Отметить использованными' }).disabled).toBe(false)
+    })
+    expect(api.setProductStatus).toHaveBeenCalledTimes(completed + 1)
+    expect(api.setProductStatus).toHaveBeenNthCalledWith(1, 1, 'used')
+    if (completed === 1) expect(api.setProductStatus).toHaveBeenNthCalledWith(2, 2, 'used')
+    expect(api.listProducts).toHaveBeenCalledTimes(2)
+    expect(api.getRecommendations).toHaveBeenCalledTimes(2)
+    expect(screen.getByText(`истекающих: ${2 - completed}`)).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'Продукты' }))
+    expect(screen.getByRole('button', { name: /Вторая пачка молока/ })).toBeTruthy()
+    if (completed === 1) expect(screen.queryByRole('button', { name: /Молоко 3,2 %/ })).toBeNull()
   })
 })

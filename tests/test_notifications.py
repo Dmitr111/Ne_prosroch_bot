@@ -6,6 +6,10 @@ Telegram и БД не задействованы.
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
+
+import pytest
 
 from backend.bot.notifications import NO_RECIPES_TEXT, format_expiry_message
 from backend.repositories.notifications import NotificationType
@@ -13,6 +17,75 @@ from backend.scheduler.jobs import notification_type, products_to_notify
 
 TODAY = date(2026, 3, 10)
 NOW = datetime(2026, 3, 10, 9, 0, tzinfo=timezone.utc)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("utc_hour, local_day", [(18, 9), (19, 10)])
+async def test_application_date_around_midnight(monkeypatch, utc_hour, local_day) -> None:
+    """UTC и дата ОС не сдвигают срочность, подбор и задания относительно друг друга."""
+    from backend import clock
+    from backend.api import products as products_api
+    from backend.config import settings
+    from backend.scheduler import jobs
+    from tests.test_service import build, product as stock_product, recipe
+
+    moment = datetime(2026, 3, 9, utc_hour, 59, tzinfo=timezone.utc)
+    local_date = date(2026, 3, local_day)
+    monkeypatch.setattr(settings, "timezone", "Asia/Yekaterinburg")
+    frozen_datetime = Mock()
+    frozen_datetime.now.side_effect = lambda tz: moment.astimezone(tz)
+    monkeypatch.setattr(clock, "datetime", frozen_datetime)
+    assert clock.application_now().date() == local_date
+
+    # Прямой вызов обработчика с подставными репозиториями, без HTTP и БД.
+    milk = SimpleNamespace(
+        id=1, name="Молоко", expiry_date=TODAY, manufacture_date=None,
+        ingredient_name="молоко", storage_place_id=None, status_code="in_stock",
+        quantity=1, unit="л",
+    )
+    frozen_datetime.now.reset_mock()
+    [item] = await products_api.list_products(
+        SimpleNamespace(telegram_id=1),
+        SimpleNamespace(get_all=AsyncMock(return_value=[milk])),
+        SimpleNamespace(get=AsyncMock(return_value=SimpleNamespace(horizon_days=7))),
+    )
+    assert item.days_left == (TODAY - local_date).days
+    frozen_datetime.now.assert_called_once()
+    fixture = build([stock_product(1, "молоко", 0)], [recipe("Коктейль", "молоко")])
+    [recommendation] = await fixture.service.get_recommendations(1)
+    assert recommendation.covered_weight == 7 - item.days_left
+
+    session = AsyncMock()
+    context = AsyncMock()
+    context.__aenter__.return_value = session
+    monkeypatch.setattr(jobs, "async_session_factory", Mock(return_value=context))
+    recipients = AsyncMock(return_value=[1])
+    monkeypatch.setattr(jobs, "SettingsRepository", Mock(
+        return_value=SimpleNamespace(get_recipients=recipients)
+    ))
+    notify = AsyncMock(return_value=True)
+    monkeypatch.setattr(jobs, "_notify_user", notify)
+    bot = Mock()
+    frozen_datetime.now.reset_mock()
+    assert await jobs.check_expiry_dates(bot) == 1
+    frozen_datetime.now.assert_called_once()
+    recipients.assert_awaited_once_with((utc_hour + 5) % 24)
+    notify.assert_awaited_once_with(bot, 1, local_date, moment)
+
+    write_off = AsyncMock(return_value=1)
+    monkeypatch.setattr(jobs, "ProductRepository", Mock(
+        return_value=SimpleNamespace(write_off_expired=write_off)
+    ))
+    frozen_datetime.now.reset_mock()
+    assert await jobs.write_off_expired() == 1
+    frozen_datetime.now.assert_called_once()
+    write_off.assert_awaited_once_with(local_date)
+    frozen_datetime.now.reset_mock()
+    await jobs.write_off_expired(today=TODAY)
+    write_off.assert_awaited_with(TODAY)
+    await jobs.check_expiry_dates(bot, now=moment)
+    notify.assert_awaited_with(bot, 1, local_date, moment)
+    frozen_datetime.now.assert_not_called()
 
 
 @dataclass

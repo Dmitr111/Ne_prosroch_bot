@@ -20,12 +20,12 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from backend.api import deps
+from backend.api import deps, products as products_api
 from backend.api.deps import InitDataError, parse_init_data
 from backend.core.service import RecommendationTrigger
 from backend.main import app
 
-TODAY = date.today()
+TODAY = date(2026, 3, 10)
 BOT_TOKEN = "123456:TEST-TOKEN"
 OWNER_ID = 1
 STRANGER_PRODUCT_ID = 999
@@ -215,8 +215,11 @@ class Environment:
 
 
 @pytest.fixture
-def env() -> Iterator[Environment]:
+def env(monkeypatch) -> Iterator[Environment]:
     """Подменяет зависимости приложения на подставные."""
+    monkeypatch.setattr(
+        products_api, "application_now", lambda: datetime(2026, 3, 10, tzinfo=timezone.utc)
+    )
     environment = Environment(
         products=FakeProductRepository(
             [

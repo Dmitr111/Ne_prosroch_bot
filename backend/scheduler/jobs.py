@@ -30,6 +30,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from backend.bot.notifications import send_expiry_notification
+from backend.clock import application_now
 from backend.config import settings
 from backend.core.service import RecommendationService, RecommendationTrigger
 from backend.db.session import async_session_factory
@@ -117,8 +118,7 @@ async def check_expiry_dates(bot: "Bot", now: datetime | None = None) -> int:
         отметка в журнале — в UTC
     :return: число отправленных напоминаний
     """
-    local_zone = ZoneInfo(settings.timezone)
-    local_now = (now or datetime.now(tz=local_zone)).astimezone(local_zone)
+    local_now = application_now(now)
     today = local_now.date()
     moment = local_now.astimezone(timezone.utc)
 
@@ -205,7 +205,8 @@ async def write_off_expired(today: date | None = None) -> int:
 
     :return: число списанных позиций
     """
-    today = today or date.today()
+    if today is None:
+        today = application_now().date()
     async with async_session_factory() as session:
         written_off = await ProductRepository(session).write_off_expired(today)
         await session.commit()

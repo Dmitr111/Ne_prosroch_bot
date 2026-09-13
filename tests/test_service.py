@@ -6,7 +6,8 @@
 """
 
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
+from unittest.mock import Mock
 
 import pytest
 
@@ -399,19 +400,59 @@ async def test_incomplete_recipe_is_skipped() -> None:
 
 
 @pytest.mark.asyncio
-async def test_expired_product_is_prioritised() -> None:
-    """Просроченный продукт весит больше истекающего сегодня."""
+async def test_expired_product_is_excluded_but_today_is_available() -> None:
+    """Просроченное исключено, срок сегодня даёт полный вес горизонта."""
     fixture = build(
         products=[
             product(1, "молоко", days_left=0),  # вес 7
-            product(2, "картофель", days_left=-3),  # вес 10
+            product(2, "картофель", days_left=-3),  # исключён
         ],
         recipes=[recipe("Коктейль", "молоко"), recipe("Пюре", "картофель")],
     )
 
     result = await fixture.service.get_recommendations(1, today=TODAY)
 
-    assert [item.recipe.title for item in result] == ["Пюре", "Коктейль"]
+    assert [item.recipe.title for item in result] == ["Коктейль"]
+    assert result[0].covered_product_ids == (1,)
+    assert result[0].covered_weight == 7
+    assert fixture.saved.saved[0].items == [("Коктейль", 7)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fresh_milk", [False, True])
+async def test_expired_ingredient_cannot_make_recipe_available(fresh_milk: bool) -> None:
+    """Просроченное молоко не дополняет состав и не увеличивает покрытие."""
+    products = [product(1, "молоко", -1), product(2, "куриное яйцо", 1)]
+    if fresh_milk:
+        products.append(product(3, "молоко", 2))
+    fixture = build(products, [recipe("Омлет", "молоко", "куриное яйцо")])
+
+    result = await fixture.service.get_recommendations(1, today=TODAY)
+
+    if fresh_milk:
+        assert result[0].covered_product_ids == (2, 3)
+        assert result[0].covered_weight == 11
+        assert fixture.saved.saved[0].items == [("Омлет", 11)]
+    else:
+        assert result == []
+        assert fixture.saved.saved[0].items == []
+    assert fixture.products._products == products
+
+
+@pytest.mark.asyncio
+async def test_default_date_is_read_once_and_explicit_date_is_preserved(monkeypatch) -> None:
+    """Дата фиксируется до запросов; явная дата не обращается к часам."""
+    clock = Mock(return_value=datetime(2026, 3, 10, tzinfo=timezone.utc))
+    monkeypatch.setattr("backend.core.service.application_now", clock)
+    fixture = build([product(1, "молоко", 0)], [recipe("Коктейль", "молоко")])
+
+    [result] = await fixture.service.get_recommendations(1)
+
+    assert result.covered_weight == 7
+    clock.assert_called_once_with()
+    clock.reset_mock()
+    assert await fixture.service.get_recommendations(1, today=TODAY + timedelta(days=1)) == []
+    clock.assert_not_called()
 
 
 @pytest.mark.asyncio
