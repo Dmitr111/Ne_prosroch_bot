@@ -17,6 +17,7 @@ from backend.api.schemas import (
     ProductUpdate,
 )
 from backend.core.urgency import urgency_level
+from backend.clock import application_now
 from backend.db.models import Product, ProductStatusCode
 from backend.repositories.products import DuplicateProductError
 
@@ -97,7 +98,7 @@ async def list_products(
     items = await products.get_all(
         user.telegram_id, None if status_filter == "all" else status_filter
     )
-    today = date.today()
+    today = application_now().date()
     return [to_read(item, user_settings.horizon_days, today) for item in items]
 
 
@@ -127,7 +128,7 @@ async def create_product(
             status_code=status.HTTP_409_CONFLICT,
             detail="Такой продукт с этим сроком годности уже добавлен",
         ) from error
-    return to_read(product, user_settings.horizon_days, date.today())
+    return to_read(product, user_settings.horizon_days, application_now().date())
 
 
 @router.patch("/{product_id}", response_model=ProductRead)
@@ -166,7 +167,7 @@ async def update_product(
             status_code=status.HTTP_409_CONFLICT,
             detail="Такой продукт с этим сроком годности уже добавлен",
         ) from error
-    return to_read(product, user_settings.horizon_days, date.today())
+    return to_read(product, user_settings.horizon_days, application_now().date())
 
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -201,4 +202,4 @@ async def set_product_status(
     product = await _get_owned(products, user.telegram_id, product_id)
     user_settings = await settings.get(user.telegram_id)
     product = await products.set_status(product, payload.status_code)
-    return to_read(product, user_settings.horizon_days, date.today())
+    return to_read(product, user_settings.horizon_days, application_now().date())

@@ -106,9 +106,12 @@ export function App() {
     setError(null)
     try {
       setRecipes(await api.getRecommendations())
+      return null
     } catch (cause) {
       // Ошибку подбора показываем только на экране подбора
-      if (screenRef.current.name === 'recommendations') setError(describe(cause))
+      const message = describe(cause)
+      if (screenRef.current.name === 'recommendations') setError(message)
+      return message
     } finally {
       setRecipesLoading(false)
     }
@@ -172,21 +175,33 @@ export function App() {
   async function writeOff(recipe: Recipe) {
     setWritingOff(recipe.title)
     setError(null)
+    const errors: string[] = []
+    let completed = 0
     try {
       for (const productId of recipe.covered_product_ids) {
         await api.setProductStatus(productId, 'used')
+        completed += 1
       }
     } catch (cause) {
-      setError(describe(cause))
+      errors.push(
+        `Не удалось отметить все продукты. Подтверждено: ${completed} из ${recipe.covered_product_ids.length}. ${describe(cause)}`,
+      )
     } finally {
       // Перечитываем и после сбоя: часть продуктов могла уже списаться,
       // и экран не должен показывать устаревшее состояние
       try {
         await loadProducts()
-      } catch {
-        // Ошибка уже показана
+      } catch (cause) {
+        errors.push(`Не удалось обновить список продуктов: ${describe(cause)}`)
       }
-      await loadRecommendations()
+      const recommendationsError = await loadRecommendations()
+      if (recommendationsError) {
+        errors.push(`Не удалось обновить подборку: ${recommendationsError}`)
+      }
+      // Обновление подбора очищает ошибку; итог операции показываем после него.
+      if (screenRef.current.name === 'recommendations') {
+        setError(errors.length > 0 ? errors.join(' ') : null)
+      }
       setWritingOff(null)
     }
   }

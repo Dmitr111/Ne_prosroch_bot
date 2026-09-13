@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import TYPE_CHECKING
 
+from backend.clock import application_now
 from backend.core.greedy import (
     GreedyRecommender,
     Product,
@@ -100,13 +101,16 @@ class RecommendationService:
             прироста полезности; каждая несёт рецепт и покрытые им продукты
         """
         if today is None:
-            today = date.today()
+            today = application_now().date()
 
         settings = await self._settings.get(telegram_id)
         horizon_days = settings.horizon_days
         limit = settings.recommend_limit
 
         products = await self._products.get_active(telegram_id)
+        # Просроченное не даёт ни доступного ингредиента, ни покрытия.
+        # Позиции со сроком сегодня и свежие с нулевым весом остаются.
+        products = [product for product in products if product.expiry_date >= today]
         recipe_models = await self._recipes.get_all()
 
         weights = self._weights(products, horizon_days, today)
