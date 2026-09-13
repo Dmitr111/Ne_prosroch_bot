@@ -53,7 +53,7 @@ WARMUP = 3
 HORIZON = 7
 # Значение k по умолчанию в приложении
 K = 5
-DAYS_LEFT_RANGE = (-2, 10)
+DAYS_LEFT_RANGE = (0, 10)
 # Размер справочника ингредиентов, как в seed.py
 INGREDIENT_COUNT = 60
 SEED = 20250910
